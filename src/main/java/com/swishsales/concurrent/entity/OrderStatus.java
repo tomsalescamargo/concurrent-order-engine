@@ -1,0 +1,6 @@
+package com.swishsales.concurrent.entity;
+
+public enum OrderStatus {
+    PENDING, PROCESSING, INVOICED, SHIPPED, DELIVERED,
+    CANCELLED, FAILED_VALIDATION, FAILED_FINANCIAL, FAILED_LOGISTICS
+}
