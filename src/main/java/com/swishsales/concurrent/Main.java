@@ -1,17 +1,32 @@
 package com.swishsales.concurrent;
 
-//TIP To <b>Run</b> code, press <shortcut actionId="Run"/> or
-// click the <icon src="AllIcons.Actions.Execute"/> icon in the gutter.
+import com.swishsales.concurrent.entity.Order;
+import com.swishsales.concurrent.repository.CustomerRepository;
+import com.swishsales.concurrent.repository.ItemRepository;
+import com.swishsales.concurrent.task.OrderCreator;
+
+import javax.swing.*;
+import java.util.concurrent.*;
+
 public class Main {
     public static void main(String[] args) {
-        //TIP Press <shortcut actionId="ShowIntentionActions"/> with your caret at the highlighted text
-        // to see how IntelliJ IDEA suggests fixing it.
-        System.out.printf("Hello and welcome!");
 
-        for (int i = 1; i <= 5; i++) {
-            //TIP Press <shortcut actionId="Debug"/> to start debugging your code. We have set one <icon src="AllIcons.Debugger.Db_set_breakpoint"/> breakpoint
-            // for you, but you can always add more by pressing <shortcut actionId="ToggleLineBreakpoint"/>.
-            System.out.println("i = " + i);
+        // ImplementMe - Producer-consumer
+        BlockingQueue<Order> ordersQueue = new LinkedBlockingQueue<>();
+
+        CustomerRepository customerRepository = new CustomerRepository();
+        ItemRepository itemRepository = new ItemRepository();
+
+        String errorPercentageInput = JOptionPane.showInputDialog(
+                "Digite a taxa de erro desejada em porcentagem (ex: 15): "
+        );
+        Double errorRate = Double.parseDouble(errorPercentageInput) / 100.0;
+
+        // ImplementME - Thread Pool
+        ExecutorService ordersProducerPool = Executors.newFixedThreadPool(7);
+        int numberOfOrders = 10;
+        for (int i = 0; i < numberOfOrders; i++) {
+            ordersProducerPool.execute(new OrderCreator(customerRepository, itemRepository, ordersQueue));
         }
     }
 }
