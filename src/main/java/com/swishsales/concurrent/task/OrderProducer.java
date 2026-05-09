@@ -9,13 +9,13 @@ import com.swishsales.concurrent.repository.ItemRepository;
 import java.util.UUID;
 import java.util.concurrent.BlockingQueue;
 
-public class OrderCreator implements Runnable {
+public class OrderProducer implements Runnable {
 
     private final CustomerRepository customerRepository;
     private final ItemRepository itemRepository;
     private final BlockingQueue<Order> orderQueue;
 
-    public OrderCreator(
+    public OrderProducer(
             CustomerRepository customerRepository,
             ItemRepository itemRepository,
             BlockingQueue<Order> orderQueue
