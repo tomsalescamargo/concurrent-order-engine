@@ -6,10 +6,7 @@ import com.swishsales.concurrent.entity.Order;
 import com.swishsales.concurrent.entity.OrderStatus;
 import com.swishsales.concurrent.repository.CustomerRepository;
 import com.swishsales.concurrent.repository.ItemRepository;
-
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Future;
+import com.swishsales.concurrent.util.CustomFuture;
 
 public class OrderService {
 
@@ -24,24 +21,58 @@ public class OrderService {
     }
 
     public boolean validateOrder(Order order) {
-        // ImplementME - Future
-        // Validates if the Customer and Item related to Order are valid
-        Future<Boolean> orderDataValidationFuture = CompletableFuture.supplyAsync(
-                () -> validateOrderData(order)
-        );
 
-        // Validates the order payment (simulates a fake external API call)
-        Future<Boolean> orderPaymentValidationFuture = CompletableFuture.supplyAsync(
-                () -> validateOrderPayment(order)
-        );
+        // 1. Criamos os "recibos" vazios
+        CustomFuture<Boolean> orderDataValidationFuture = new CustomFuture<>();
+        CustomFuture<Boolean> orderPaymentValidationFuture = new CustomFuture<>();
+
+        // 2. Disparamos a validação de dados em uma nova Thread
+        //pool.submit(() -> {
+        //            try {
+        //                Boolean result = validateOrderData(order);
+        //                orderDataValidationFuture.complete(result);
+        //            } catch (Exception e) {
+        //                orderDataValidationFuture.completeExceptionally(e);
+        //            });
+        new Thread(() -> {
+            try {
+                Boolean result = validateOrderData(order);
+                orderDataValidationFuture.complete(result);
+            } catch (Exception e) {
+                orderDataValidationFuture.completeExceptionally(e);
+            }
+        }, "validator-data-" + order.getId()).start();
+
+        // 3. Disparamos a validação de pagamento em outra Thread concorrente
+        //pool.submit(() -> {
+        //            try {
+        //                Boolean result = validateOrderPayment(order);
+        //                orderPaymentValidationFuture.complete(result);
+        //            } catch (Exception e) {
+        //                orderPaymentValidationFuture.completeExceptionally(e);
+        //            });
+        new Thread(() -> {
+            try {
+                Boolean result = validateOrderPayment(order);
+                orderPaymentValidationFuture.complete(result);
+            } catch (Exception e) {
+                orderPaymentValidationFuture.completeExceptionally(e);
+            }
+        }, "validator-payment-" + order.getId()).start();
 
         Boolean isOrderDataValid;
         Boolean isOrderPaymentValid;
+
         try {
-            isOrderDataValid = orderDataValidationFuture.get();
-            isOrderPaymentValid = orderPaymentValidationFuture.get();
-        } catch (InterruptedException | ExecutionException e) {
+            // 4. A Thread do OrderConsumer vai pausar aqui (no .get()) até que
+            // as Threads acima chamem o .complete() ou .completeExceptionally()
+            isOrderDataValid = orderDataValidationFuture.get(5000);
+            isOrderPaymentValid = orderPaymentValidationFuture.get(5000);
+        } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
+            order.setOrderStatus(OrderStatus.FAILED_VALIDATION);
+            return false;
+        } catch (Exception e) {
             order.setOrderStatus(OrderStatus.FAILED_VALIDATION);
             return false;
         }
@@ -81,8 +112,9 @@ public class OrderService {
 
     private Boolean validateOrderPayment(Order order) {
         try {
-            Thread.sleep(1000); // Simulates external payment API
+            Thread.sleep(1000); // Simula API externa
         } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
             throw new RuntimeException(e);
         }
 
