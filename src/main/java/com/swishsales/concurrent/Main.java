@@ -13,7 +13,7 @@ import java.util.concurrent.*;
 
 public class Main {
     public static void main(String[] args) {
-        // ImplementMe - Producer-consumer
+        // ImplementME - Producer-consumer
         BlockingQueue<Order> ordersQueue = new LinkedBlockingQueue<>();
 
         // Repository init
@@ -45,6 +45,9 @@ public class Main {
                     new OrderConsumer(ordersQueue, orderService, logisticsService)
             );
         }
+
+        ordersProducerPool.shutdown();
+        ordersConsumerPool.shutdown();
     }
 
     private static Double getErrorRate() {

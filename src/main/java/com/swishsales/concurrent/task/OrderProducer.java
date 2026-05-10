@@ -34,6 +34,7 @@ public class OrderProducer implements Runnable {
 
         try {
             orderQueue.put(order);
+            System.out.println("Novo pedido gerado na fila: " + order.getId());
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
         }

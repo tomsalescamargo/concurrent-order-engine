@@ -27,6 +27,7 @@ public class OrderConsumer implements Runnable {
                 // Thread sleeps if the queue is empty
                 Order order = ordersQueue.take();
                 order.setOrderStatus(OrderStatus.PROCESSING);
+                System.out.println("Iniciando processamento do pedido: " + order.getId());
 
                 // Delegates validation to the service layer
                 boolean isOrderValid = orderService.validateOrder(order);

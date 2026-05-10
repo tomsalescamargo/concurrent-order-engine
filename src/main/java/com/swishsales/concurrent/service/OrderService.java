@@ -24,6 +24,7 @@ public class OrderService {
     }
 
     public boolean validateOrder(Order order) {
+        // ImplementME - Future
         // Validates if the Customer and Item related to Order are valid
         Future<Boolean> orderDataValidationFuture = CompletableFuture.supplyAsync(
                 () -> validateOrderData(order)
@@ -45,11 +46,17 @@ public class OrderService {
             return false;
         }
 
-        if (isOrderDataValid && isOrderPaymentValid) {
-            return true;
+        if (!isOrderDataValid) {
+            order.setOrderStatus(OrderStatus.FAILED_VALIDATION);
+            return false;
         }
 
-        return false;
+        if (!isOrderPaymentValid) {
+            order.setOrderStatus(OrderStatus.FAILED_FINANCIAL);
+            return false;
+        }
+
+        return true;
     }
 
     private Boolean validateOrderData(Order order) {
@@ -61,13 +68,11 @@ public class OrderService {
 
         if (item == null || customer == null) {
             System.out.println("Dados do pedido " + order.getId() + " inválidos");
-            order.setOrderStatus(OrderStatus.FAILED_VALIDATION);
             return false;
         }
 
         if (shouldFail()) {
             System.out.println("Validação dos dados do pedido " + order.getId() + " falhou");
-            order.setOrderStatus(OrderStatus.FAILED_VALIDATION);
             return false;
         }
 
@@ -83,7 +88,6 @@ public class OrderService {
 
         if (shouldFail()) {
             System.out.println("Não foi possível processar o pagamento do pedido " + order.getId());
-            order.setOrderStatus(OrderStatus.FAILED_FINANCIAL);
             return false;
         }
 
