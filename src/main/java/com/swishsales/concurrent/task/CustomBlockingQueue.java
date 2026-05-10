@@ -5,7 +5,16 @@ import java.util.Queue;
 import java.util.concurrent.Semaphore;
 
 
-// Fila genérica controlada por semáforos.
+/**
+ * Implementação do padrão Producer-Consumer.
+ *
+ * Três primitivas de sincronização:
+ *   - mutex: garante exclusão mútua no acesso ao buffer (apenas uma thread mexe na queue por vez).
+ *   - existingItems: contador de itens prontos para consumo. Bloqueia consumidores quando == 0.
+ *   - freeSpaces:    contador de vagas disponíveis. Bloqueia produtores quando == 0.
+ *
+ * A ordem dos acquire/release é crítica: sempre adquire o semáforo contador ANTES do mutex.
+ */
 public class CustomBlockingQueue<T> {
 
     private final Queue<T> queue = new LinkedList<>();
@@ -31,7 +40,7 @@ public class CustomBlockingQueue<T> {
             mutex.release();
         }
 
-        // Sinaliza que agora tem mais um item na fila
+        // Sinaliza que agora tem mais um item na fila.
         existingItems.release();
     }
 
@@ -47,7 +56,7 @@ public class CustomBlockingQueue<T> {
         } finally {
             mutex.release();
         }
-        // Sinaliza que abriu um espaço livre.
+        // Sinaliza que abriu um espaço livre
         freeSpaces.release();
         return item;
     }

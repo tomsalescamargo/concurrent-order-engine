@@ -12,6 +12,19 @@ import com.swishsales.concurrent.task.OrderProducer;
 
 import javax.swing.*;
 
+/**
+ * Ponto de entrada e orquestração da simulação.
+ *
+ * Cria três thread pools distintos (producer, consumer, validation).
+ *
+ * O encerramento usa poison pills em DOIS NÍVEIS:
+ *  1. Order.POISON_ORDER  na orderQueue   → faz OrderConsumer.run() sair do while(true)
+ *  2. CustomThreadPool.POISON_PILL via shutdown() → faz Workers terminarem suas threads
+ *
+ * A ordem importa: producer encerra primeiro (não vai mais haver Orders novas);
+ * depois injeta-se POISON_ORDER (libera consumers); depois encerra-se o consumer pool;
+ * por fim, o validation pool (que só pode ser fechado quando ninguém mais vai submeter).
+ */
 public class Main {
     public static void main(String[] args) throws InterruptedException {
         // CONFIG
@@ -52,7 +65,8 @@ public class Main {
         LogisticsService logisticsService = new LogisticsService(errorRate);
 
 
-        // Producer threads, task OrderProducer creates an order and puts into the orders queue
+        // Submetemos N OrderProducers (cada um one-shot) para gerar N pedidos. O paralelismo
+        // de geração vem do número de workers do producer pool, não do número de submissões.
         CustomThreadPool ordersProducerPool = new CustomThreadPool(numberOfProducerThreads, taskQueueSize);
         for (int i = 0; i < numberOfOrders; i++) {
             ordersProducerPool.submit(
@@ -60,7 +74,8 @@ public class Main {
             );
         }
 
-        // Consumer threads, task OrderConsumer waits for the
+        // Cada OrderConsumer é long-lived: ocupa um worker durante toda a vida do programa,
+        // processando vários pedidos em loop até receber POISON_ORDER.
         CustomThreadPool ordersConsumerPool = new CustomThreadPool(numberOfConsumerThreads, taskQueueSize);
         for (int i = 0; i < numberOfConsumerThreads; i++) {
             ordersConsumerPool.submit(
@@ -68,15 +83,18 @@ public class Main {
             );
         }
 
-        // Desliga producer pool
+        // SHUTDOWN COORDENADO
+
+        // Producer pool aguarda todos os OrderProducer terminarem (cada um produz 1 pedido).
+        // Após awaitTermination, garantimos que ninguém mais vai escrever em orderQueue.
         ordersProducerPool.shutdown();
         ordersProducerPool.awaitTermination();
 
-        // Importante: Injeta poison orders pra acordar as threads consumidoras
-        // que estão dormindo para elas finalizarem
+        // Injeta uma POISON_ORDER por consumer thread.
         for (int i = 0; i < numberOfConsumerThreads; i++) {
             orderQueue.put(Order.POISON_ORDER);
         }
+
         ordersConsumerPool.shutdown();
         ordersConsumerPool.awaitTermination();
 

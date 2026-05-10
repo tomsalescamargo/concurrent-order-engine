@@ -9,6 +9,8 @@ public class Order {
     private final Item item;
     private final Customer customer;
     private OrderStatus orderStatus;
+
+    // Sentinela do padrão Producer-Consumer para graceful shutdown da orderQueue.
     public static final Order POISON_ORDER = new Order(null, null, null);
 
     public Order(UUID id, Item item, Customer customer) {

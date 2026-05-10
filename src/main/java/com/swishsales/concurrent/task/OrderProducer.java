@@ -8,6 +8,9 @@ import com.swishsales.concurrent.repository.ItemRepository;
 
 import java.util.UUID;
 
+/**
+ * Runnable one-shot: cria exatamente UM pedido e termina.
+ */
 public class OrderProducer implements Runnable {
 
     private final CustomerRepository customerRepository;
