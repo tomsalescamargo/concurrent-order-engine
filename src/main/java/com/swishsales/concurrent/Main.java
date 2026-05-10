@@ -21,7 +21,7 @@ public class Main {
 
         // Service init
         Double errorRate = getErrorRate();
-        OrderService orderService = new OrderService(errorRate);
+        OrderService orderService = new OrderService(errorRate, itemRepository, customerRepository);
 
 
         // ImplementME - Thread Pool
