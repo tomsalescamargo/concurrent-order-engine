@@ -2,6 +2,7 @@ package com.swishsales.concurrent.task;
 
 import com.swishsales.concurrent.entity.Order;
 import com.swishsales.concurrent.entity.OrderStatus;
+import com.swishsales.concurrent.service.LogisticsService;
 import com.swishsales.concurrent.service.OrderService;
 
 import java.util.concurrent.BlockingQueue;
@@ -11,10 +12,12 @@ public class OrderConsumer implements Runnable {
 
     private final BlockingQueue<Order> ordersQueue;
     private final OrderService orderService;
+    private final LogisticsService logisticsService;
 
-    public OrderConsumer(BlockingQueue<Order> ordersQueue, OrderService orderService) {
+    public OrderConsumer(BlockingQueue<Order> ordersQueue, OrderService orderService, LogisticsService logisticsService) {
         this.ordersQueue = ordersQueue;
         this.orderService = orderService;
+        this.logisticsService = logisticsService;
     }
 
     @Override
@@ -26,12 +29,14 @@ public class OrderConsumer implements Runnable {
                 order.setOrderStatus(OrderStatus.PROCESSING);
 
                 // Delegates validation to the service layer
-                orderService.validateOrder(order);
+                boolean isOrderValid = orderService.validateOrder(order);
 
-                // TODO: logistics service flow
-
+                if (isOrderValid) {
+                    logisticsService.processDelivery(order);
+                }
             } catch (InterruptedException e) {
-                throw new RuntimeException(e);
+                Thread.currentThread().interrupt();
+                return;
             }
         }
     }

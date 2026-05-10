@@ -3,6 +3,7 @@ package com.swishsales.concurrent;
 import com.swishsales.concurrent.entity.Order;
 import com.swishsales.concurrent.repository.CustomerRepository;
 import com.swishsales.concurrent.repository.ItemRepository;
+import com.swishsales.concurrent.service.LogisticsService;
 import com.swishsales.concurrent.service.OrderService;
 import com.swishsales.concurrent.task.OrderConsumer;
 import com.swishsales.concurrent.task.OrderProducer;
@@ -22,6 +23,7 @@ public class Main {
         // Service init
         Double errorRate = getErrorRate();
         OrderService orderService = new OrderService(errorRate, itemRepository, customerRepository);
+        LogisticsService logisticsService = new LogisticsService(errorRate);
 
 
         // ImplementME - Thread Pool
@@ -40,7 +42,7 @@ public class Main {
         ExecutorService ordersConsumerPool = Executors.newFixedThreadPool(numberOfConsumers);
         for (int i = 0; i < numberOfConsumers; i++) {
             ordersConsumerPool.execute(
-                    new OrderConsumer(ordersQueue, orderService)
+                    new OrderConsumer(ordersQueue, orderService, logisticsService)
             );
         }
     }
