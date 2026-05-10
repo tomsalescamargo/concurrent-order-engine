@@ -3,6 +3,7 @@ package com.swishsales.concurrent.service;
 import com.swishsales.concurrent.entity.Customer;
 import com.swishsales.concurrent.entity.Item;
 import com.swishsales.concurrent.entity.Order;
+import com.swishsales.concurrent.entity.OrderStatus;
 import com.swishsales.concurrent.repository.CustomerRepository;
 import com.swishsales.concurrent.repository.ItemRepository;
 
@@ -39,7 +40,9 @@ public class OrderService {
             isOrderDataValid = orderDataValidationFuture.get();
             isOrderPaymentValid = orderPaymentValidationFuture.get();
         } catch (InterruptedException | ExecutionException e) {
-            throw new RuntimeException(e);
+            Thread.currentThread().interrupt();
+            order.setOrderStatus(OrderStatus.FAILED_VALIDATION);
+            return false;
         }
 
         if (isOrderDataValid && isOrderPaymentValid) {
@@ -57,12 +60,14 @@ public class OrderService {
         Customer customer = customerRepository.findById(customerId);
 
         if (item == null || customer == null) {
-            System.out.println("Order " + order.getId() + " data invalid");
+            System.out.println("Dados do pedido " + order.getId() + " inválidos");
+            order.setOrderStatus(OrderStatus.FAILED_VALIDATION);
             return false;
         }
 
         if (shouldFail()) {
-            System.out.println("Order " + order.getId() + " data validation failed");
+            System.out.println("Validação dos dados do pedido " + order.getId() + " falhou");
+            order.setOrderStatus(OrderStatus.FAILED_VALIDATION);
             return false;
         }
 
@@ -77,7 +82,8 @@ public class OrderService {
         }
 
         if (shouldFail()) {
-            System.out.println("Unable to process order " + order.getId() + " payment");
+            System.out.println("Não foi possível processar o pagamento do pedido " + order.getId());
+            order.setOrderStatus(OrderStatus.FAILED_FINANCIAL);
             return false;
         }
 

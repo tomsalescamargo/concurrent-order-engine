@@ -35,7 +35,7 @@ public class OrderProducer implements Runnable {
         try {
             orderQueue.put(order);
         } catch (InterruptedException e) {
-            throw new RuntimeException(e);
+            Thread.currentThread().interrupt();
         }
     }
 }
