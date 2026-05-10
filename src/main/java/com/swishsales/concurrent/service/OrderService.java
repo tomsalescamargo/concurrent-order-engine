@@ -27,6 +27,8 @@ public class OrderService {
         CustomFuture<Boolean> orderPaymentValidationFuture = new CustomFuture<>();
 
         // 2. Disparamos a validação de dados em uma nova Thread
+
+        // PADRÃO THREAD POOL (Código comentado):
         //pool.submit(() -> {
         //            try {
         //                Boolean result = validateOrderData(order);
@@ -34,6 +36,7 @@ public class OrderService {
         //            } catch (Exception e) {
         //                orderDataValidationFuture.completeExceptionally(e);
         //            });
+
         new Thread(() -> {
             try {
                 Boolean result = validateOrderData(order);
@@ -42,6 +45,9 @@ public class OrderService {
                 orderDataValidationFuture.completeExceptionally(e);
             }
         }, "validator-data-" + order.getId()).start();
+        // NOMEAÇÃO DE THREAD: Passar o nome ("validator-data-" + order.getId()) no construtor da Thread
+        // é uma excelente prática de observabilidade. Se houver um gargalo ou erro, ferramentas de
+        // monitoramento (thread dumps) mostrarão exatamente qual pedido estava sendo processado por essa thread.
 
         // 3. Disparamos a validação de pagamento em outra Thread concorrente
         //pool.submit(() -> {
@@ -51,6 +57,7 @@ public class OrderService {
         //            } catch (Exception e) {
         //                orderPaymentValidationFuture.completeExceptionally(e);
         //            });
+
         new Thread(() -> {
             try {
                 Boolean result = validateOrderPayment(order);
@@ -66,13 +73,26 @@ public class OrderService {
         try {
             // 4. A Thread do OrderConsumer vai pausar aqui (no .get()) até que
             // as Threads acima chamem o .complete() ou .completeExceptionally()
+
+            // MECANISMO DE TIMEOUT:
+            // A inclusão do tempo limite (5 segundos) previne que a thread consumidora
+            // sofra de 'starvation' (inanição) ou fique presa num 'deadlock'. Se a API de pagamento externa
+            // travar e nunca responder, o sistema não congela para sempre; ele lança uma exceção e segue a vida.
             isOrderDataValid = orderDataValidationFuture.get(5000);
             isOrderPaymentValid = orderPaymentValidationFuture.get(5000);
+
         } catch (InterruptedException e) {
+            // TRATAMENTO DE INTERRUPÇÃO:
+            // Se a Thread do Consumer for interrompida pelo sistema (ex: encerramento da aplicação),
+            // a flag de interrupção é restaurada e o pedido é marcado como falho de forma segura.
             Thread.currentThread().interrupt();
             order.setOrderStatus(OrderStatus.FAILED_VALIDATION);
             return false;
+
         } catch (Exception e) {
+            // TRATAMENTO DO TIMEOUT OU EXCEÇÕES DO FUTURE:
+            // Cai neste bloco se o get(5000) estourar o tempo limite (lançando RuntimeException)
+            // ou se a validação dentro da thread disparar um completeExceptionally().
             order.setOrderStatus(OrderStatus.FAILED_VALIDATION);
             return false;
         }
