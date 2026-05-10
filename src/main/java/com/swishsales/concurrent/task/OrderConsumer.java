@@ -5,16 +5,14 @@ import com.swishsales.concurrent.entity.OrderStatus;
 import com.swishsales.concurrent.service.LogisticsService;
 import com.swishsales.concurrent.service.OrderService;
 
-import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
 
 public class OrderConsumer implements Runnable {
 
-    private final BlockingQueue<Order> ordersQueue;
+    private final CustomBlockingQueue<Order> ordersQueue;
     private final OrderService orderService;
     private final LogisticsService logisticsService;
 
-    public OrderConsumer(BlockingQueue<Order> ordersQueue, OrderService orderService, LogisticsService logisticsService) {
+    public OrderConsumer(CustomBlockingQueue<Order> ordersQueue, OrderService orderService, LogisticsService logisticsService) {
         this.ordersQueue = ordersQueue;
         this.orderService = orderService;
         this.logisticsService = logisticsService;
@@ -26,6 +24,9 @@ public class OrderConsumer implements Runnable {
             try {
                 // Thread sleeps if the queue is empty
                 Order order = ordersQueue.take();
+                if (order == Order.POISON_ORDER) {
+                    return;
+                }
                 order.setOrderStatus(OrderStatus.PROCESSING);
                 System.out.println("Iniciando processamento do pedido: " + order.getId());
 

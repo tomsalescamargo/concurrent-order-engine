@@ -1,4 +1,4 @@
-package com.swishsales.concurrent.util;
+package com.swishsales.concurrent.future;
 
 /**
  * Implementação customizada do padrão de projeto Future.

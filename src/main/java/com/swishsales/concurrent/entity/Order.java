@@ -9,6 +9,7 @@ public class Order {
     private final Item item;
     private final Customer customer;
     private OrderStatus orderStatus;
+    public static final Order POISON_ORDER = new Order(null, null, null);
 
     public Order(UUID id, Item item, Customer customer) {
         this.id = id;

@@ -7,18 +7,17 @@ import com.swishsales.concurrent.repository.CustomerRepository;
 import com.swishsales.concurrent.repository.ItemRepository;
 
 import java.util.UUID;
-import java.util.concurrent.BlockingQueue;
 
 public class OrderProducer implements Runnable {
 
     private final CustomerRepository customerRepository;
     private final ItemRepository itemRepository;
-    private final BlockingQueue<Order> orderQueue;
+    private final CustomBlockingQueue<Order> orderQueue;
 
     public OrderProducer(
             CustomerRepository customerRepository,
             ItemRepository itemRepository,
-            BlockingQueue<Order> orderQueue
+            CustomBlockingQueue<Order> orderQueue
     ) {
         this.customerRepository = customerRepository;
         this.itemRepository = itemRepository;

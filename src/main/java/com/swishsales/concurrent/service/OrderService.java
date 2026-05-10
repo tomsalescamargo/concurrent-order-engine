@@ -4,20 +4,23 @@ import com.swishsales.concurrent.entity.Customer;
 import com.swishsales.concurrent.entity.Item;
 import com.swishsales.concurrent.entity.Order;
 import com.swishsales.concurrent.entity.OrderStatus;
+import com.swishsales.concurrent.pool.CustomThreadPool;
 import com.swishsales.concurrent.repository.CustomerRepository;
 import com.swishsales.concurrent.repository.ItemRepository;
-import com.swishsales.concurrent.util.CustomFuture;
+import com.swishsales.concurrent.future.CustomFuture;
 
 public class OrderService {
 
     private final Double errorRate;
     private final ItemRepository itemRepository;
     private final CustomerRepository customerRepository;
+    private final CustomThreadPool validationPool;
 
-    public OrderService(Double errorRate, ItemRepository itemRepository, CustomerRepository customerRepository) {
+    public OrderService(Double errorRate, ItemRepository itemRepository, CustomerRepository customerRepository, CustomThreadPool validationPool) {
         this.errorRate = errorRate;
         this.itemRepository = itemRepository;
         this.customerRepository = customerRepository;
+        this.validationPool = validationPool;
     }
 
     public boolean validateOrder(Order order) {
@@ -26,52 +29,37 @@ public class OrderService {
         CustomFuture<Boolean> orderDataValidationFuture = new CustomFuture<>();
         CustomFuture<Boolean> orderPaymentValidationFuture = new CustomFuture<>();
 
-        // 2. Disparamos a validação de dados em uma nova Thread
+        // 2. Disparamos a validação de dados na ThreadPool de validation
+        try {
+            // Validação de dados
+            validationPool.submit(() -> {
+                try {
+                    orderDataValidationFuture.complete(validateOrderData(order));
+                } catch (Exception e) {
+                    orderDataValidationFuture.completeExceptionally(e);
+                }
+            });
 
-        // PADRÃO THREAD POOL (Código comentado):
-        //pool.submit(() -> {
-        //            try {
-        //                Boolean result = validateOrderData(order);
-        //                orderDataValidationFuture.complete(result);
-        //            } catch (Exception e) {
-        //                orderDataValidationFuture.completeExceptionally(e);
-        //            });
+            // validação de pagamento
+            validationPool.submit(() -> {
+                try {
+                    orderPaymentValidationFuture.complete(validateOrderPayment(order));
+                } catch (Exception e) {
+                    orderPaymentValidationFuture.completeExceptionally(e);
+                }
+            });
 
-        new Thread(() -> {
-            try {
-                Boolean result = validateOrderData(order);
-                orderDataValidationFuture.complete(result);
-            } catch (Exception e) {
-                orderDataValidationFuture.completeExceptionally(e);
-            }
-        }, "validator-data-" + order.getId()).start();
-        // NOMEAÇÃO DE THREAD: Passar o nome ("validator-data-" + order.getId()) no construtor da Thread
-        // é uma excelente prática de observabilidade. Se houver um gargalo ou erro, ferramentas de
-        // monitoramento (thread dumps) mostrarão exatamente qual pedido estava sendo processado por essa thread.
-
-        // 3. Disparamos a validação de pagamento em outra Thread concorrente
-        //pool.submit(() -> {
-        //            try {
-        //                Boolean result = validateOrderPayment(order);
-        //                orderPaymentValidationFuture.complete(result);
-        //            } catch (Exception e) {
-        //                orderPaymentValidationFuture.completeExceptionally(e);
-        //            });
-
-        new Thread(() -> {
-            try {
-                Boolean result = validateOrderPayment(order);
-                orderPaymentValidationFuture.complete(result);
-            } catch (Exception e) {
-                orderPaymentValidationFuture.completeExceptionally(e);
-            }
-        }, "validator-payment-" + order.getId()).start();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            order.setOrderStatus(OrderStatus.FAILED_VALIDATION);
+            return false;
+        }
 
         Boolean isOrderDataValid;
         Boolean isOrderPaymentValid;
 
         try {
-            // 4. A Thread do OrderConsumer vai pausar aqui (no .get()) até que
+            // 3. A Thread do OrderConsumer vai pausar aqui (no .get()) até que
             // as Threads acima chamem o .complete() ou .completeExceptionally()
 
             // MECANISMO DE TIMEOUT:
