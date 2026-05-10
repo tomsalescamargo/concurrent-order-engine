@@ -17,7 +17,7 @@ public class LogisticsService {
 
         try {
             // Simulates physical delivery shipping
-            Thread.sleep(2000);
+            Thread.sleep(1000);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             System.out.println("Transporte interrompido para o pedido: " + order.getId());

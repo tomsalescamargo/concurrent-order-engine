@@ -120,7 +120,7 @@ public class OrderService {
 
     private Boolean validateOrderPayment(Order order) {
         try {
-            Thread.sleep(1000); // Simula API externa
+            Thread.sleep(500); // Simula API externa
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             throw new RuntimeException(e);
